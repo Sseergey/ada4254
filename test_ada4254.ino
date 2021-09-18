@@ -13,7 +13,7 @@ void setup() {
   SPI.begin();
   SPI.beginTransaction(SPISettings(14000, MSBFIRST, SPI_MODE0));
 
-  while (!ada.available()) {
+  while (ada.available()) {
     ;
   }
 }
@@ -22,6 +22,9 @@ void setup() {
 void loop()
 {
     ada.init();
+	while (ada.calibration()) {
+    ;
+    }
     ada.calibration();
     ada.connectInputA();
     ada.setGain(GAIN1);
