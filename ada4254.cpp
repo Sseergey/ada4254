@@ -120,7 +120,10 @@ bool ADA4254::clearError()
 
 bool ADA4254::isBusy()
 {
-    return (bool)(readRegister(_errDigital) & _valCal_BUSY);
+     if((readRegister(_errDigital) & _valCal_BUSY) != 0)
+        return true;
+    else
+        return false;
 }
 
 void ADA4254::calibration()
