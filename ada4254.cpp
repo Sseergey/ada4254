@@ -159,14 +159,6 @@ int ADA4254::readRegister(int adr)
     adr |= 0x80; //set read command
     int val = 0;
     int crc = 0;
-    bool isCRC = _isCRC;
-    if(_isCRC)
-    {
-        if((adr == 0x03) || (adr == 0x04) || (adr == 0x05))
-        {
-            isCRC = false;
-        }
-    }
     digitalWrite(_pinCS, !levelCS1);
     _spi->transfer(adr);
     val = _spi->transfer(0x00);
