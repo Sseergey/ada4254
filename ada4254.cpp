@@ -14,22 +14,39 @@ ADA4254::ADA4254(SPIClass *spi, int pinCS, bool isFullCalibration)
     _setupCal = {& _adrRegSetupCal, &_regSetupCal};
 }
 
-void ADA4254::connectInputA()
+ADA4254::ADA4254(SPIClass *spi, int pinCS, bool isFullCalibration, bool isCRC)
+{
+    _isCRC = isCRC;
+    _pinCS = pinCS;
+    _spi = spi;
+    _isCalFull = isFullCalibration;
+
+    _gain = {& _adrRegGain, & _regGain};
+    _mux = {&_adrRegMux, & _regMux};
+    _errAnalog = {& _adrRegAnalogError, &_regAnalog_err};
+    _errDigital= {& _adrRegDigitalError, &_regDigital_err};
+    _setupCal = {& _adrRegSetupCal, &_regSetupCal};
+}
+
+bool ADA4254::connectInputA()
 {
     resInputsRegMux();
     _regMux |= _muxInputA;
     writeRegister(_mux);
+	return chekRegister(_mux);
+	
 }
 
-void ADA4254::connectInputB()
+bool ADA4254::connectInputB()
 {
     resInputsRegMux();
     _regMux |= _muxInputB;
     writeRegister(_mux);
+	return chekRegister(_mux);
 }
 
 
-void ADA4254::connectInputDVSS()
+bool ADA4254::connectInputDVSS()
 {
     resInputsRegMux();
     _regMux |= _muxInputC;
@@ -37,9 +54,10 @@ void ADA4254::connectInputDVSS()
     _regSetupCal |= _cal_muxDVSS;
     writeRegister(_mux);
     writeRegister(_setupCal);
+	return chekRegister(_mux);
 }
 
-void ADA4254::connectInputP20mv()
+bool ADA4254::connectInputP20mv()
 {
     resInputsRegMux();
     _regMux |= _muxInputC;
@@ -47,9 +65,10 @@ void ADA4254::connectInputP20mv()
     _regSetupCal |= _cal_muxP20mV;
     writeRegister(_mux);
     writeRegister(_setupCal);
+	return chekRegister(_mux) & chekRegister(_setupCal);
 }
 
-void ADA4254::connectInputM20mv()
+bool ADA4254::connectInputM20mv()
 {
     resInputsRegMux();
     _regMux |= _muxInputC;
@@ -57,18 +76,22 @@ void ADA4254::connectInputM20mv()
     _regSetupCal |= _cal_muxM20mV;
     writeRegister(_mux);
     writeRegister(_setupCal);
+	return chekRegister(_mux) & chekRegister(_setupCal);
 }
 
-void ADA4254::disconnectInputs()
+bool ADA4254::disconnectInputs()
 {
    resInputsRegMux();
    writeRegister(_mux);
+   return chekRegister(_mux);
+   
 }
 
-void ADA4254::setGain(GAIN val)
+bool ADA4254::setGain(GAIN val)
 {
     _regGain = (_regGain &(_mask_gain^0xFB)) | (val & _mask_gain);
     writeRegister(_gain);
+	return chekRegister(_gain);
 }
 
 int ADA4254::available()
@@ -78,11 +101,17 @@ int ADA4254::available()
     return 1;        
 }
 
-void ADA4254::init()
+bool ADA4254::init()
 {
     writeRegister(_adrRegReset, _valMain_reset);
     if(_isCRC)
-        writeRegister(_adrRegDigitalError, _valMain_spi_crc);
+    {
+        writeRegister(0x0b, 0);
+    }
+    else
+    {
+        writeRegister(0x0b, 32);
+    }
 }
 
 
@@ -144,14 +173,17 @@ void ADA4254::resInputsRegMuxTest()
 
 void ADA4254::writeRegister(int adr, int data)
 {
+    int crc = 0x00;
+    if(_isCRC)
+        crc = crc8(adr, data);
     digitalWrite(_pinCS, !levelCS1);
     _spi->transfer(adr);
     delay(100); 
     _spi->transfer(data);
     delay(100);
-    _spi->transfer(0x00);
+    _spi->transfer(crc);
     digitalWrite(_pinCS, levelCS1);
-    delay(100);
+    delay(300);
 }
 
 int ADA4254::readRegister(int adr)
@@ -164,7 +196,34 @@ int ADA4254::readRegister(int adr)
     val = _spi->transfer(0x00);
     crc = _spi->transfer(0x00);
     digitalWrite(_pinCS, levelCS1);
+    if(_isCRC)
+    {
+        if(crc8(adr, val) != crc)
+            return -1;
+    }
     return val;
+}
+
+bool  ADA4254::chekRegister(int adr, int data)
+{
+	int val = readRegister(adr);
+	if(val >= 0)
+	{
+		if(val == data)
+			return true;
+	}
+	return false;
+}
+
+bool  ADA4254::chekRegister(ADA4254::__data data)
+{
+	int val = readRegister(*data.adress);
+	if(val >= 0)
+	{
+		if(val == data())
+			return true;
+	}
+	return false;
 }
 
 void ADA4254::writeRegister(ADA4254::__data data)
@@ -176,4 +235,25 @@ int ADA4254::readRegister(ADA4254::__data data)
 {
     *data.val = readRegister(*data.adress);
     return data();
+}
+
+int ADA4254::crc8(int adr, int data)
+{
+    int val = (adr << 8) | data;
+    int crc = val << 8;
+    int magic = 0x107<<15; // polinom
+    int mask = 0x1<<23;    // sign MSB 1
+
+    for (int i = 0; i < 20; i++)
+    {
+        if((mask & crc) != 0)
+        {
+            crc = (crc^magic);
+        }
+        magic = magic >> 1;
+        mask = mask >> 1;
+        if(magic < 0xFF)
+            break;
+    }
+    return crc;
 }

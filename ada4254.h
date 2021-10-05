@@ -3,6 +3,7 @@
 
 #include <SPI.h>
 
+
 enum GAIN{
     GAIN1div16 = 0x00 << 3,
     GAIN1div8  = 0x01 << 3,
@@ -23,15 +24,16 @@ class ADA4254
 {
 public:
     ADA4254(SPIClass *spi, int pinCS, bool isFullCalibration);
-    void connectInputA();
-    void connectInputB();
-    void connectInputDVSS();
-    void connectInputP20mv();
-    void connectInputM20mv();
-    void disconnectInputs();
-    void setGain(GAIN val);
+    ADA4254(SPIClass *spi, int pinCS, bool isFullCalibration, bool isCRC);
+    bool connectInputA();
+    bool connectInputB();
+    bool connectInputDVSS();
+    bool connectInputP20mv();
+    bool connectInputM20mv();
+    bool disconnectInputs();
+    bool setGain(GAIN val);
     int  available();
-    void init();
+    bool init();
     bool isError();
     int getAnalogError();
     int getDigitralError();
@@ -81,11 +83,14 @@ private:
         void setAdr(int *adr);
     };
 
+    int crc8(int adr, int data);
 
     void resInputsRegMux();
     void resInputsRegMuxTest();
     void writeRegister(int adr, int data);
     void writeRegister(__data data);
+	  bool chekRegister(int adr, int data);
+	  bool chekRegister(__data data);
     int  readRegister(int adr);
     int  readRegister(__data data);
 

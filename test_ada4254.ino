@@ -2,7 +2,8 @@
 
 const int slaveSelectPin = 4;
 
-ADA4254 ada(&SPI, 4, 0);
+//turn on crc 
+ADA4254 ada(&SPI, 4, 0, 1);
 
 void setup() {
 
