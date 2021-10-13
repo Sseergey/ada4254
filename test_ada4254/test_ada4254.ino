@@ -1,16 +1,14 @@
 #include "ada4254.h"
 
-const int slaveSelectPin = 4;
+const int slaveSPISelectPin = 4;
 
 //turn on crc 
-ADA4254 ada(&SPI, 4, 0, 1);
+ADA4254 ada(&SPI, slaveSPISelectPin, 0, 1);
 
 void setup() {
 
   Serial.begin(9600);
-
-  pinMode(slaveSelectPin, OUTPUT);
-  digitalWrite(slaveSelectPin, levelCS1);
+  pinMode(slaveSPISelectPin, OUTPUT);
   SPI.begin();
   SPI.beginTransaction(SPISettings(14000, MSBFIRST, SPI_MODE0));
 
@@ -23,9 +21,6 @@ void setup() {
 void loop()
 {
     ada.init();
-	while (ada.calibration()) {
-    ;
-    }
     ada.calibration();
     ada.connectInputA();
     ada.setGain(GAIN1);
